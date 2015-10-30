@@ -3,6 +3,7 @@ import java.awt.Checkbox;
 import java.awt.CheckboxGroup;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Label;
 import java.awt.MediaTracker;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -17,7 +18,7 @@ public class Floodfill extends Applet implements MouseListener
 	int m_nSelectedColor = 0xff0000ff;
 	BufferedImage m_objShape;
 	MediaTracker tracker = new MediaTracker(this);
-	
+	int targetColor;
 	int m_nTestShapeX = 100;
 	int m_nTestShapeY = 100;
 	
@@ -37,7 +38,7 @@ public class Floodfill extends Applet implements MouseListener
     CheckboxGroup lngGrp = new CheckboxGroup();
     Checkbox full = new Checkbox("Full Recursion", lngGrp, true);
     Checkbox partial = new Checkbox("Partial Recursion", lngGrp, true);
-    
+ 
 	public void init()
 	{
 		addMouseListener(this);
@@ -106,7 +107,6 @@ public class Floodfill extends Applet implements MouseListener
 		m_nStartColor = GetPixel(x,y) | 0xff000000;
 		Graphics canvas = getGraphics();
 		canvas.setColor( m_objSelectedColor );
-		
 		int w = m_objShape.getWidth();
 		int h = m_objShape.getHeight();
 
@@ -120,6 +120,18 @@ public class Floodfill extends Applet implements MouseListener
 	
 	void RecursiveFill( int x, int y, int w, int h, Graphics canvas )
 	{
+		
+		if(y<0 || x<0 || x>=w) return;
+		if(GetPixel(x,y) != m_nStartColor) return;
+		
+		SetPixel(x+m_nTestShapeX, y+m_nTestShapeY, canvas);
+		SetPixel(x,y,m_nSelectedColor);
+	
+		RecursiveFill( x-1, y, w, h, canvas);
+		RecursiveFill( x+1, y, w, h, canvas);
+		RecursiveFill( x, y-1, w, h, canvas);
+		RecursiveFill( x, y+1, w, h, canvas);
+		
 	}
 	
 	int m_nStartX, m_nStartY, m_nStartColor;
@@ -130,7 +142,6 @@ public class Floodfill extends Applet implements MouseListener
 		m_nStartColor = GetPixel(x,y) | 0xff000000;
 		Graphics canvas = getGraphics();
 		canvas.setColor( m_objSelectedColor );
-		
 		int w = m_objShape.getWidth();
 		int h = m_objShape.getHeight();
 
@@ -144,9 +155,55 @@ public class Floodfill extends Applet implements MouseListener
 	
 	void FloodFill( int x, int y, int w, int h, Graphics canvas )
 	{
-
+		// base case (boundary of image)
+				if (y < 0 || y > m_objShape.getHeight()-1)
+					return;
+				
+				// base case (pixel clicked is same color as selected)
+				if (targetColor == m_objSelectedColor.getRGB())
+					return;
+				
+				// base case (pixel passed is already selected color)
+				if (m_objSelectedColor.getRGB() == GetPixel(x, y))
+					return;
+				
+				// index to traverse left
+				int left = x;
+				// iterate left changing only target pixels
+				while ( GetPixel(left, y) == targetColor )
+				{
+					// change the current pixel 
+					SetPixel(left, y, m_objSelectedColor.getRGB());
+					left--;
+					// boundary
+					if (left < 0)
+						break;
+				}
+				
+				// index to traverse right
+				int right = x+1;
+				// iterate right changing only target pixels
+				while ( GetPixel(right, y) == targetColor )
+				{
+					// change the current pixel
+					SetPixel(right, y, m_objSelectedColor.getRGB());
+					right++;
+					// boundary
+					if (right > m_objShape.getWidth()-1)
+						break;
+				}
+				
+				// iterate over row for recursive calls
+				for (left += 1; left < right ; left++)
+				{
+					// call up
+					FloodFill(left,y+1,w,h,canvas);
+					//call down
+					FloodFill(left,y-1,w,h,canvas);
+				}
+				// make sure we get the picture
+				repaint();
 	}
-
 	@Override
 	public void mouseClicked(MouseEvent ms) 
 	{
@@ -189,6 +246,7 @@ public class Floodfill extends Applet implements MouseListener
 				}
 				else
 				{
+					targetColor = GetPixel(ms.getX()-100, ms.getY()-100);
 					DoFloodFill( ms.getX(), ms.getY());
 				}
 			}
